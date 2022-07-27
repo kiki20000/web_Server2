@@ -4,19 +4,39 @@ const bcryptjs = require('bcryptjs');
 
 const Usuario = require('../models/usuario');
 
-const usuariosGet = (req, res = response) => {
+const usuariosGet = async(req, res = response) => {
 
-    const params = req.query;
+    //const { maximo = 5 } = res.query;
+
+    // const usuarios = await Usuario.find({estado: true})
+    //     .limit(5);
+
+    // const total = await Usuario.countDocuments({estado: true});
+
+    const [total, usuarios] = await Promise.all([
+        Usuario.countDocuments({estado: true}),
+        Usuario.find({estado: true}).limit(5)
+    ]);
 
     res.json({
-        msg: 'get API - controlador',
-        params
+        
+        total,
+        usuarios
     });
 }
 
-const usuariosPut = (req, res = response) => {
+const usuariosPut = async(req, res = response) => {
 
-    const id = req.params.id;
+    const { id } = req.params;
+    const {_id, password, google, correo, ...resto} = req.body;
+
+    if(password){
+
+        const salt = bcryptjs.genSaltSync();
+        resto.password = bcryptjs.hashSync(password, salt);
+    }
+
+    const usuario = await Usuario.findByIdAndUpdate(id, resto);
 
     res.json({
         msg: 'put API - controlador',
@@ -31,13 +51,7 @@ const usuariosPost = async(req, res = response) => {
     const usuario = new Usuario({nombre, correo, password, rol});
 
     //verificar si el correo existe
-    const existeEmail = await Usuario.findOne({correo});
-
-    if(existeEmail){
-        return res.status(400).json({
-            msg: 'Ese correo ya existe'
-        });
-    }
+    
 
 
     //Encriptar la contraseña
@@ -53,10 +67,16 @@ const usuariosPost = async(req, res = response) => {
 }
 
 
-const usuariosDelete = (req, res = response) => {
-    res.json({
-        msg: 'delete API - controlador'
-    });
+const usuariosDelete = async(req, res = response) => {
+
+    const {id} = req.params;
+
+    //Lo borramos fisicamente
+    //const usuario = await Usuario.findByIdAndDelete(id);
+
+    const usuario = await Usuario.findByIdAndUpdate(id, {estado: false});
+
+    res.json(usuario);
 }
 
 
